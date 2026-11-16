@@ -1,0 +1,21 @@
+# macOS system files
+.DS_Store
+
+# Terraform local provider binaries (>400 MB) and state files
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars
+*.tfvars.json
+
+# Python bytecode & local build artifacts
+__pycache__/
+*.py[cod]
+ai-creative-studio-backend/function.zip
+ai-creative-studio-backend/response.json
+
+# Environment & secret files (never commit secrets)
+.env
+*.pem
+*.key

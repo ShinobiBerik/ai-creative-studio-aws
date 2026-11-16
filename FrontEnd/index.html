@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Creative Studio — AWS Serverless Portfolio</title>
+<meta name="description" content="AI Creative Studio: text, PDF, image and video generation. Hosted on Amazon S3.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root{
+    --bg:#070b14; --panel:#0f1624; --panel-2:#0b111d; --border:#1e293b; --border-2:#2b3a52;
+    --cyan:#38bdf8; --purple:#a855f7; --pink:#ec4899; --green:#22c55e; --red:#f87171; --amber:#fbbf24;
+    --text:#f1f5f9; --muted:#94a3b8; --dim:#64748b;
+    --grad:linear-gradient(135deg,#38bdf8 0%,#a855f7 55%,#ec4899 100%);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg); color:var(--text); line-height:1.5;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 15% -10%,rgba(56,189,248,.15),transparent 60%),
+      radial-gradient(ellipse 60% 50% at 95% 0%,rgba(168,85,247,.15),transparent 60%);
+    background-attachment:fixed;
+  }
+  a{color:var(--cyan);text-decoration:none}
+  .wrap{max-width:1200px;margin:0 auto;padding:0 1.25rem}
+
+  /* ---------- Nav ---------- */
+  nav{position:sticky;top:0;z-index:20;backdrop-filter:blur(12px);background:rgba(7,11,20,.75);border-bottom:1px solid var(--border)}
+  nav .wrap{display:flex;align-items:center;justify-content:space-between;height:64px}
+  .brand{display:flex;align-items:center;gap:.6rem;font-weight:800;font-size:1.05rem}
+  .logo{width:34px;height:34px;border-radius:9px;background:var(--grad);display:grid;place-items:center;font-size:1.1rem}
+  .nav-right{display:flex;gap:.6rem;align-items:center}
+  .chip{display:inline-flex;align-items:center;gap:.4rem;font-size:.75rem;color:var(--muted);border:1px solid var(--border);padding:.35rem .7rem;border-radius:999px;background:var(--panel-2)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
+  .icon-btn{background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:.45rem .8rem;cursor:pointer;font-size:.85rem;font-family:inherit}
+  .icon-btn:hover{border-color:var(--cyan)}
+
+  /* ---------- Hero ---------- */
+  .hero{text-align:center;padding:3.5rem 0 2rem}
+  .hero h1{font-size:clamp(2rem,5vw,3.2rem);font-weight:800;letter-spacing:-.03em;line-height:1.1}
+  .hero h1 span{background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .hero p{color:var(--muted);max-width:640px;margin:1rem auto 0;font-size:1.02rem}
+  .stack{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;margin-top:1.4rem}
+
+  /* ---------- Tabs ---------- */
+  .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:.8rem;margin:1rem 0 1.5rem}
+  .tab{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:1rem;cursor:pointer;text-align:left;color:var(--text);font-family:inherit;transition:.2s}
+  .tab:hover{border-color:var(--border-2);transform:translateY(-2px)}
+  .tab .ico{font-size:1.5rem}
+  .tab .t{font-weight:700;margin-top:.4rem}
+  .tab .d{font-size:.78rem;color:var(--muted)}
+  .tab.active{border-color:transparent;background:linear-gradient(var(--panel),var(--panel)) padding-box,var(--grad) border-box;border:1px solid transparent;box-shadow:0 10px 30px -10px rgba(168,85,247,.45)}
+  @media (max-width:760px){.tabs{grid-template-columns:repeat(2,1fr)}}
+
+  /* ---------- Studio ---------- */
+  .studio{display:grid;grid-template-columns:400px 1fr;gap:1.25rem;margin-bottom:3rem}
+  @media (max-width:960px){.studio{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:1.4rem;box-shadow:0 20px 40px -20px rgba(0,0,0,.6)}
+  .panel h2{font-size:1.05rem;font-weight:700;margin-bottom:.25rem;display:flex;align-items:center;gap:.5rem}
+  .panel .sub{font-size:.8rem;color:var(--muted);margin-bottom:1.2rem}
+  .tool{display:none}
+  .tool.active{display:block}
+  .field{margin-bottom:1rem}
+  label{display:block;font-size:.78rem;font-weight:600;color:var(--muted);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.04em}
+  select,textarea,input[type=text],input[type=password]{
+    width:100%;background:var(--panel-2);border:1px solid var(--border);border-radius:10px;padding:.7rem .8rem;
+    color:var(--text);font-size:.92rem;font-family:inherit;transition:border-color .2s
+  }
+  select:focus,textarea:focus,input:focus{outline:none;border-color:var(--cyan)}
+  textarea{resize:vertical;min-height:120px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:.7rem}
+  .seg{display:flex;background:var(--panel-2);border:1px solid var(--border);border-radius:10px;padding:3px;margin-bottom:1rem}
+  .seg button{flex:1;background:none;border:none;color:var(--muted);padding:.5rem;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:600;font-size:.85rem}
+  .seg button.on{background:var(--panel);color:var(--text);box-shadow:0 0 0 1px var(--border-2)}
+  .drop{border:1.5px dashed var(--border-2);border-radius:12px;padding:1.5rem;text-align:center;color:var(--muted);cursor:pointer;font-size:.88rem;transition:.2s}
+  .drop:hover,.drop.over{border-color:var(--cyan);color:var(--text);background:rgba(56,189,248,.05)}
+  .drop strong{color:var(--text)}
+  .examples{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.5rem}
+  .ex{font-size:.74rem;background:var(--panel-2);border:1px solid var(--border);color:var(--muted);padding:.3rem .6rem;border-radius:999px;cursor:pointer}
+  .ex:hover{color:var(--text);border-color:var(--cyan)}
+  .go{
+    width:100%;background:var(--grad);color:#fff;border:none;border-radius:10px;padding:.85rem;font-size:.95rem;
+    font-weight:700;cursor:pointer;font-family:inherit;transition:.2s;display:flex;align-items:center;justify-content:center;gap:.5rem
+  }
+  .go:hover{filter:brightness(1.1)}
+  .go:disabled{opacity:.5;cursor:not-allowed}
+  .hint{font-size:.74rem;color:var(--dim);margin-top:.6rem;text-align:center}
+
+  /* ---------- Output ---------- */
+  .out-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;gap:.5rem;flex-wrap:wrap}
+  .out-actions{display:flex;gap:.4rem}
+  .out-actions button{background:var(--panel-2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:.4rem .7rem;font-size:.8rem;cursor:pointer;font-family:inherit}
+  .out-actions button:hover{border-color:var(--cyan)}
+  .out-actions button:disabled{opacity:.4;cursor:not-allowed}
+  .output{
+    background:var(--panel-2);border:1px solid var(--border);border-radius:12px;min-height:460px;max-height:640px;overflow:auto;
+    padding:1.2rem;font-size:.93rem;color:#cbd5e1;position:relative
+  }
+  .output .text{white-space:pre-wrap;word-break:break-word}
+  .output img,.output video{max-width:100%;border-radius:10px;display:block;margin:0 auto}
+  .empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--dim);text-align:center;padding:2rem}
+  .empty .big{font-size:3rem;margin-bottom:.6rem;opacity:.6}
+  .loader{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;position:absolute;inset:0;color:var(--cyan);font-size:.9rem;text-align:center;padding:1rem}
+  .spin{width:42px;height:42px;border-radius:50%;border:3px solid var(--border-2);border-top-color:var(--cyan);border-right-color:var(--purple);animation:s 0.9s linear infinite}
+  @keyframes s{to{transform:rotate(360deg)}}
+  .progress{width:60%;height:6px;background:var(--border);border-radius:999px;overflow:hidden}
+  .progress i{display:block;height:100%;width:0;background:var(--grad);transition:width .3s}
+  .err{color:var(--red);background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.3);border-radius:10px;padding:1rem}
+  .meta{font-size:.75rem;color:var(--dim);margin-top:.8rem;display:flex;gap:1rem;flex-wrap:wrap}
+  .frames{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin-top:1rem}
+  .frames img{border-radius:6px;aspect-ratio:16/9;object-fit:cover}
+
+  /* ---------- History ---------- */
+  .history{margin-bottom:3rem}
+  .history h3{font-size:1rem;margin-bottom:.8rem}
+  .hist-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.7rem}
+  .hist{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:.7rem .85rem;font-size:.8rem;cursor:pointer}
+  .hist:hover{border-color:var(--border-2)}
+  .hist .k{font-size:.7rem;color:var(--cyan);font-weight:700;text-transform:uppercase}
+  .hist .p{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* ---------- Architecture strip ---------- */
+  .arch{display:grid;grid-template-columns:repeat(5,1fr);gap:.6rem;margin-bottom:3rem}
+  .arch div{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:.9rem;font-size:.8rem;color:var(--muted)}
+  .arch b{display:block;color:var(--text);font-size:.85rem;margin-bottom:.15rem}
+  @media (max-width:860px){.arch{grid-template-columns:repeat(2,1fr)}}
+
+  footer{border-top:1px solid var(--border);padding:1.5rem 0;color:var(--dim);font-size:.8rem;text-align:center}
+
+  /* ---------- Modal ---------- */
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:50;padding:1rem}
+  .modal-bg.show{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--border-2);border-radius:16px;padding:1.5rem;max-width:480px;width:100%}
+  .modal h3{margin-bottom:.4rem}
+  .modal p{font-size:.85rem;color:var(--muted);margin-bottom:1rem}
+  .modal .btns{display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem}
+  .toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(120px);background:var(--panel);border:1px solid var(--border-2);padding:.7rem 1.1rem;border-radius:10px;font-size:.85rem;transition:.3s;z-index:60}
+  .toast.show{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <div class="brand"><div class="logo">✦</div> AI Creative Studio</div>
+    <div class="nav-right">
+      <span class="chip" title="GET /health → API Gateway → VPC Lambda"><span class="dot" id="statusDot" style="background:var(--amber);box-shadow:0 0 8px var(--amber)"></span><span id="statusText">Checking backend...</span></span>
+    </div>
+  </div>
+</nav>
+
+<main class="wrap">
+  <section class="hero">
+    <h1>Create with <span>AI</span>, served by <span>AWS</span></h1>
+    <p>A serverless creative studio for text, PDF, image and video generation. The static site is hosted on Amazon S3 and built entirely on the AWS Free Tier.</p>
+    <div class="stack">
+      <span class="chip">☁️ Amazon S3 Static Hosting</span>
+      <span class="chip">λ AWS Lambda (VPC)</span>
+      <span class="chip">🔐 IAM + MFA</span>
+      <span class="chip">🌍 eu-west-2</span>
+      <span class="chip">🤖 Open-Source AI</span>
+    </div>
+  </section>
+
+  <!-- Tabs -->
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-tool="text"><div class="ico">💬</div><div class="t">Text</div><div class="d">Write, code & brainstorm</div></button>
+    <button class="tab" data-tool="pdf"><div class="ico">📄</div><div class="t">PDF</div><div class="d">Generate or analyse PDFs</div></button>
+    <button class="tab" data-tool="image"><div class="ico">🎨</div><div class="t">Image</div><div class="d">Text-to-image art</div></button>
+    <button class="tab" data-tool="video"><div class="ico">🎬</div><div class="t">Video</div><div class="d">AI storyboard videos</div></button>
+  </div>
+
+  <div class="studio">
+    <!-- ================= CONTROLS ================= -->
+    <div class="panel">
+
+      <!-- TEXT -->
+      <div class="tool active" id="tool-text">
+        <h2>💬 Text Generation</h2>
+        <div class="sub">Chat with an open-source LLM.</div>
+        <div class="field">
+          <label>Mode</label>
+          <select id="textMode">
+            <option value="general">✍️ General assistant</option>
+            <option value="code">💻 Code helper</option>
+            <option value="marketing">📣 Marketing copy</option>
+            <option value="story">📖 Creative story</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Prompt</label>
+          <textarea id="textPrompt" placeholder="e.g. Explain AWS VPC Gateway Endpoints in simple terms"></textarea>
+          <div class="examples">
+            <span class="ex">Explain AWS Lambda like I'm 10</span>
+            <span class="ex">Write a Python S3 upload script</span>
+            <span class="ex">Tagline for an AI art app</span>
+          </div>
+        </div>
+        <button class="go" id="textBtn" onclick="runText()">✨ Generate Text</button>
+      </div>
+
+      <!-- PDF -->
+      <div class="tool" id="tool-pdf">
+        <h2>📄 PDF Studio</h2>
+        <div class="sub">Turn a prompt into a PDF, or upload a PDF and ask questions about it.</div>
+        <div class="seg">
+          <button class="on" data-pdf="gen" onclick="setPdfMode('gen')">Generate PDF</button>
+          <button data-pdf="ana" onclick="setPdfMode('ana')">Analyse PDF</button>
+        </div>
+        <div id="pdfGen">
+          <div class="field">
+            <label>Document type</label>
+            <select id="pdfType">
+              <option value="report">📊 Report</option>
+              <option value="cv">👤 CV / Resume</option>
+              <option value="letter">✉️ Cover letter</option>
+              <option value="guide">📘 How-to guide</option>
+              <option value="notes">📝 Study notes</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>What should the PDF be about?</label>
+            <textarea id="pdfPrompt" placeholder="e.g. A one-page report on the benefits of serverless architecture on AWS"></textarea>
+          </div>
+        </div>
+        <div id="pdfAna" style="display:none">
+          <div class="field">
+            <div class="drop" id="pdfDrop" onclick="document.getElementById('pdfFile').click()">
+              📎 <strong>Click to upload</strong> or drag a PDF here<br><small id="pdfName">Max ~20 pages analysed</small>
+            </div>
+            <input type="file" id="pdfFile" accept="application/pdf" hidden>
+          </div>
+          <div class="field">
+            <label>Question / instruction</label>
+            <textarea id="pdfQuestion" style="min-height:80px">Summarise this document in clear bullet points and list the key takeaways.</textarea>
+          </div>
+        </div>
+        <button class="go" id="pdfBtn" onclick="runPdf()">📄 Generate PDF</button>
+      </div>
+
+      <!-- IMAGE -->
+      <div class="tool" id="tool-image">
+        <h2>🎨 Image Generation</h2>
+        <div class="sub">Text-to-image with FLUX diffusion models.</div>
+        <div class="field">
+          <label>Prompt</label>
+          <textarea id="imgPrompt" placeholder="e.g. A futuristic cloud data centre floating above London at sunset, cinematic lighting"></textarea>
+          <div class="examples">
+            <span class="ex">Cyberpunk fox in neon Tokyo</span>
+            <span class="ex">Isometric AWS cloud city, 3D render</span>
+            <span class="ex">Watercolour mountain lake at dawn</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Style</label>
+            <select id="imgStyle">
+              <option value="">None</option>
+              <option value=", photorealistic, 8k, highly detailed">Photorealistic</option>
+              <option value=", digital art, vibrant, trending on artstation">Digital art</option>
+              <option value=", anime style, studio ghibli">Anime</option>
+              <option value=", 3d render, octane, isometric">3D render</option>
+              <option value=", watercolor painting">Watercolour</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Size</label>
+            <select id="imgSize">
+              <option value="1024x1024">Square 1:1</option>
+              <option value="1280x720">Wide 16:9</option>
+              <option value="720x1280">Portrait 9:16</option>
+            </select>
+          </div>
+        </div>
+        <button class="go" id="imgBtn" onclick="runImage()">🎨 Generate Image</button>
+      </div>
+
+      <!-- VIDEO -->
+      <div class="tool" id="tool-video">
+        <h2>🎬 Video Generation</h2>
+        <div class="sub">The AI writes a storyboard, generates a frame for each scene, and renders a cinematic video in your browser.</div>
+        <div class="field">
+          <label>Video idea</label>
+          <textarea id="vidPrompt" placeholder="e.g. A journey of a data packet travelling through the AWS cloud"></textarea>
+          <div class="examples">
+            <span class="ex">A day in the life of a robot chef</span>
+            <span class="ex">The life cycle of a star</span>
+            <span class="ex">Astronaut discovers an alien garden</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Scenes</label>
+            <select id="vidScenes">
+              <option value="3">3 scenes</option>
+              <option value="4" selected>4 scenes</option>
+              <option value="6">6 scenes</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Style</label>
+            <select id="vidStyle">
+              <option value="cinematic, film still, dramatic lighting">Cinematic</option>
+              <option value="pixar style 3d animation">3D animation</option>
+              <option value="anime style">Anime</option>
+              <option value="watercolor illustration">Watercolour</option>
+            </select>
+          </div>
+        </div>
+        <button class="go" id="vidBtn" onclick="runVideo()">🎬 Generate Video</button>
+        <div class="hint">Renders a downloadable .webm. Best in Chrome, Edge or Firefox.</div>
+      </div>
+    </div>
+
+    <!-- ================= OUTPUT ================= -->
+    <div class="panel">
+      <div class="out-head">
+        <div><h2 id="outTitle">✨ Output</h2><div class="sub" style="margin:0" id="outSub">Results appear here</div></div>
+        <div class="out-actions">
+          <button id="copyBtn" onclick="copyOut()" disabled>📋 Copy</button>
+          <button id="dlBtn" onclick="downloadOut()" disabled>⬇️ Download</button>
+        </div>
+      </div>
+      <div class="output" id="output">
+        <div class="empty"><div class="big">✦</div>Choose a tool, enter a prompt and hit generate.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- History -->
+  <section class="history">
+    <h3>🕘 Recent generations <small style="color:var(--dim);font-weight:400">(from DynamoDB via the private VPC Lambda)</small></h3>
+    <div class="hist-list" id="histList"></div>
+  </section>
+
+  <!-- Architecture -->
+  <section>
+    <h3 style="font-size:1rem;margin-bottom:.8rem">🏗️ Architecture</h3>
+    <div class="arch">
+      <div><b>1 · Amazon S3</b>Static website hosting with a least-privilege public-read policy. No secrets in the code</div>
+      <div><b>2 · API Gateway</b>HTTP API with CORS and throttling as the single entry point</div>
+      <div><b>3 · AI Proxy Lambda</b>Reads the HF token from SSM Parameter Store and calls the AI models</div>
+      <div><b>4 · History Lambda</b>Python 3.12 on arm64 in private subnets across 2 AZs</div>
+      <div><b>5 · DynamoDB</b>Reached privately through a Gateway VPC Endpoint with no NAT cost</div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  AI Creative Studio · Built by Huseyin Berik · Hosted on Amazon S3 (eu-west-2) · AWS Free Tier
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   CONFIG
+   This file is public on S3, so it holds NO secrets.
+   Every AI call goes through API Gateway to the AI Proxy Lambda,
+   which reads the Hugging Face token from SSM Parameter Store.
+   ========================================================= */
+const API_BASE = "https://hz25eon6d3.execute-api.eu-west-2.amazonaws.com/dev/api";
+const POLL_TEXT  = "https://text.pollinations.ai/openai";
+const POLL_IMAGE = "https://image.pollinations.ai/prompt/";
+
+if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc =
+  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+let current = { type:null, text:"", blob:null, filename:"" };
+let pdfText = "";
+let pdfMode = "gen";
+
+const $ = id => document.getElementById(id);
+
+/* Anonymous per-browser session ID, used as the DynamoDB partition key for history */
+const SESSION_ID = localStorage.getItem("studio_session") || (() => {
+  const id = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)+Math.random().toString(36).slice(2));
+  localStorage.setItem("studio_session", id); return id;
+})();
+
+/* ---------- UI helpers ---------- */
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2500); }
+async function setStatus(){
+  const dot=$("statusDot"), txt=$("statusText");
+  const paint=(c,t)=>{ dot.style.background=c; dot.style.boxShadow="0 0 8px "+c; txt.textContent=t; };
+  try{
+    const r=await fetch(API_BASE);
+    r.ok ? paint("var(--green)","AWS API (hz25eon6d3) Online") : paint("var(--amber)","API HTTP "+r.status);
+  }catch{ paint("var(--amber)","Direct Free AI Mode"); }
+}
+function loading(msg, withProgress=false){
+  $("output").innerHTML = `<div class="loader"><div class="spin"></div><div id="loadMsg">${msg}</div>${withProgress?'<div class="progress"><i id="prog"></i></div>':''}</div>`;
+  $("copyBtn").disabled = $("dlBtn").disabled = true;
+}
+function updateLoad(msg, pct){ if($("loadMsg")) $("loadMsg").textContent=msg; if(pct!=null && $("prog")) $("prog").style.width=pct+"%"; }
+function showError(e){
+  const div = document.createElement("div"); div.className="err";
+  div.innerHTML = "<strong>❌ Something went wrong</strong><br>";
+  div.appendChild(document.createTextNode(e.message || String(e)));
+  div.insertAdjacentHTML("beforeend","<br><br><em>The AI models may be busy or warming up. Wait a few seconds and try again.</em>");
+  $("output").innerHTML=""; $("output").appendChild(div);
+}
+function setOut(title, sub){ $("outTitle").textContent=title; $("outSub").textContent=sub; }
+function busy(btn, on){ $(btn).disabled = on; }
+
+/* Tabs */
+document.querySelectorAll(".tab").forEach(tab=>tab.addEventListener("click",()=>{
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  document.querySelectorAll(".tool").forEach(t=>t.classList.remove("active"));
+  tab.classList.add("active"); $("tool-"+tab.dataset.tool).classList.add("active");
+}));
+/* Example chips */
+document.querySelectorAll(".ex").forEach(ex=>ex.addEventListener("click",()=>{
+  ex.closest(".field").querySelector("textarea").value = ex.textContent;
+}));
+
+/* =========================================================
+   AI PROVIDERS: calls AWS API Gateway (hz25eon6d3) first;
+   automatically falls back to free keyless API if Section 6
+   routes aren't deployed yet.
+   ========================================================= */
+async function api(path, payload){
+  const r = await fetch(API_BASE+path,{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({...payload, sessionId:SESSION_ID})});
+  let data; try{ data=await r.json(); }catch{ data={}; }
+  if (r.status===429) throw new Error("Too many requests. The API is throttled to protect free-tier limits, so please wait a moment.");
+  if (!r.ok) throw new Error(data.error || data.message || ("Backend HTTP "+r.status));
+  return data;
+}
+
+// meta = { tool, logPrompt, log } is used by the backend to write history to DynamoDB
+async function chat(messages, maxTokens=1200, meta={}){
+  try{
+    const d = await api("/generate/text",{messages, max_tokens:maxTokens, ...meta});
+    if (d && d.text) return {text:d.text, model:d.model};
+  }catch(e){ console.warn("AWS proxy route not active yet, using keyless fallback:", e.message); }
+  const r = await fetch(POLL_TEXT,{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({model:"openai",messages,private:true})});
+  if (!r.ok) throw new Error("Text API HTTP "+r.status);
+  const ct = r.headers.get("content-type")||"";
+  const text = ct.includes("json") ? ((await r.json())?.choices?.[0]?.message?.content || "") : await r.text();
+  return {text, model:"Pollinations · Open LLM"};
+}
+
+async function makeImage(prompt, w=1024, h=1024, seed, meta={}){
+  seed = seed ?? Math.floor(Math.random()*1e9);
+  try{
+    const d = await api("/generate/image",{prompt, width:w, height:h, seed, ...meta});
+    if (d && d.image){
+      const bytes = Uint8Array.from(atob(d.image), c=>c.charCodeAt(0));
+      const blob = new Blob([bytes],{type:d.mime||"image/jpeg"});
+      return {blob, url:URL.createObjectURL(blob), model:d.model};
+    }
+  }catch(e){ console.warn("AWS proxy route not active yet, using keyless fallback:", e.message); }
+  const url = `${POLL_IMAGE}${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true&model=flux`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error("Image API HTTP "+r.status);
+  const blob = await r.blob();
+  return {blob, url:URL.createObjectURL(blob), model:"Pollinations · FLUX"};
+}
+
+/* =========================================================
+   TEXT
+   ========================================================= */
+const SYSTEM = {
+  general:"You are a helpful, concise assistant.",
+  code:"You are an expert software engineer. Give clean, commented code and brief explanations.",
+  marketing:"You are a world-class copywriter. Write punchy, persuasive marketing copy.",
+  story:"You are an imaginative storyteller. Write vivid, engaging short stories."
+};
+async function runText(){
+  const prompt=$("textPrompt").value.trim(); if(!prompt) return toast("Please enter a prompt");
+  busy("textBtn",true); setOut("💬 Text output","Generating..."); loading("Thinking...");
+  const t0=performance.now();
+  try{
+    const {text,model}=await chat([{role:"system",content:SYSTEM[$("textMode").value]},{role:"user",content:prompt}],1200,{tool:"text",logPrompt:prompt});
+    const div=document.createElement("div"); div.className="text"; div.textContent=text;
+    $("output").innerHTML=""; $("output").appendChild(div);
+    $("output").insertAdjacentHTML("beforeend",`<div class="meta"><span>🤖 ${model}</span><span>⏱️ ${((performance.now()-t0)/1000).toFixed(1)}s</span></div>`);
+    current={type:"text",text,blob:new Blob([text],{type:"text/plain"}),filename:"ai-text.txt"};
+    $("copyBtn").disabled=$("dlBtn").disabled=false;
+    setOut("💬 Text output","Done"); addHistory("text",prompt);
+  }catch(e){ showError(e); setOut("💬 Text output","Failed"); }
+  busy("textBtn",false);
+}
+
+/* =========================================================
+   PDF
+   ========================================================= */
+function setPdfMode(m){
+  pdfMode=m;
+  document.querySelectorAll("[data-pdf]").forEach(b=>b.classList.toggle("on",b.dataset.pdf===m));
+  $("pdfGen").style.display = m==="gen"?"block":"none";
+  $("pdfAna").style.display = m==="ana"?"block":"none";
+  $("pdfBtn").textContent = m==="gen" ? "📄 Generate PDF" : "🔍 Analyse PDF";
+}
+const drop=$("pdfDrop");
+["dragover","dragenter"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over")}));
+["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over")}));
+drop.addEventListener("drop",e=>{ if(e.dataTransfer.files[0]) loadPdf(e.dataTransfer.files[0]); });
+$("pdfFile").addEventListener("change",e=>{ if(e.target.files[0]) loadPdf(e.target.files[0]); });
+
+async function loadPdf(file){
+  if(file.type!=="application/pdf") return toast("Please upload a PDF file");
+  $("pdfName").textContent="Reading "+file.name+"...";
+  try{
+    const doc=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
+    const pages=Math.min(doc.numPages,20); let txt="";
+    for(let i=1;i<=pages;i++){ const p=await doc.getPage(i); const c=await p.getTextContent(); txt+=c.items.map(it=>it.str).join(" ")+"\n\n"; }
+    pdfText=txt.trim();
+    $("pdfName").textContent=`✅ ${file.name} · ${doc.numPages} pages · ${pdfText.length.toLocaleString()} characters`;
+    if(!pdfText) $("pdfName").textContent+=" (no selectable text found, it may be a scanned PDF)";
+  }catch(e){ $("pdfName").textContent="❌ Could not read PDF: "+e.message; }
+}
+
+async function runPdf(){ pdfMode==="gen" ? generatePdf() : analysePdf(); }
+
+async function analysePdf(){
+  if(!pdfText) return toast("Upload a PDF with selectable text first");
+  const q=$("pdfQuestion").value.trim()||"Summarise this document.";
+  busy("pdfBtn",true); setOut("🔍 PDF analysis","Analysing..."); loading("Reading your document...");
+  try{
+    const {text,model}=await chat([
+      {role:"system",content:"You analyse documents accurately. Base answers only on the provided document."},
+      {role:"user",content:`DOCUMENT:\n"""\n${pdfText.slice(0,12000)}\n"""\n\nTASK: ${q}`}
+    ],1500,{tool:"pdf",logPrompt:"Analyse: "+q});
+    const div=document.createElement("div"); div.className="text"; div.textContent=text;
+    $("output").innerHTML=""; $("output").appendChild(div);
+    $("output").insertAdjacentHTML("beforeend",`<div class="meta"><span>🤖 ${model}</span>${pdfText.length>12000?"<span>⚠️ Only the first 12k characters were analysed</span>":""}</div>`);
+    current={type:"text",text,blob:new Blob([text],{type:"text/plain"}),filename:"pdf-analysis.txt"};
+    $("copyBtn").disabled=$("dlBtn").disabled=false;
+    setOut("🔍 PDF analysis","Done"); addHistory("pdf","Analyse: "+q);
+  }catch(e){ showError(e); setOut("🔍 PDF analysis","Failed"); }
+  busy("pdfBtn",false);
+}
+
+async function generatePdf(){
+  const topic=$("pdfPrompt").value.trim(); if(!topic) return toast("Describe what the PDF should contain");
+  const type=$("pdfType").value;
+  busy("pdfBtn",true); setOut("📄 PDF generator","Writing content..."); loading("Writing your document...",true); updateLoad("Writing your document...",20);
+  try{
+    const {text,model}=await chat([
+      {role:"system",content:`You write professional ${type} documents. Output plain text only. Start with a title on the first line prefixed by "# ". Use "## " for section headings and "- " for bullet points. Don't use any other markdown (no bold, tables or code fences).`},
+      {role:"user",content:topic}
+    ],1800,{tool:"pdf",logPrompt:"Generate: "+topic});
+    updateLoad("Laying out PDF...",80);
+    const blob=buildPdf(text);
+    const url=URL.createObjectURL(blob);
+    $("output").innerHTML=`<iframe src="${url}" style="width:100%;height:600px;border:0;border-radius:8px;background:#fff"></iframe>
+      <div class="meta"><span>🤖 ${model}</span><span>📄 Generated with jsPDF</span></div>`;
+    current={type:"pdf",text,blob,filename:"ai-"+type+".pdf"};
+    $("copyBtn").disabled=$("dlBtn").disabled=false;
+    setOut("📄 PDF generator","Ready to download"); addHistory("pdf","Generate: "+topic);
+  }catch(e){ showError(e); setOut("📄 PDF generator","Failed"); }
+  busy("pdfBtn",false);
+}
+
+function buildPdf(raw){
+  const { jsPDF } = window.jspdf;
+  const doc=new jsPDF({unit:"pt",format:"a4"});
+  const W=doc.internal.pageSize.getWidth(), H=doc.internal.pageSize.getHeight(), M=56, maxW=W-M*2;
+  let y=M;
+  const clean=s=>s.replace(/\*\*|__|`/g,"").replace(/[^\x00-\xFF\u2022]/g,"");
+  const ensure=h=>{ if(y+h>H-M){ footer(); doc.addPage(); y=M; } };
+  const footer=()=>{ doc.setFontSize(8); doc.setTextColor(150); doc.text("Generated by AI Creative Studio · AWS",M,H-24); doc.text(String(doc.internal.getNumberOfPages()),W-M,H-24,{align:"right"}); };
+  // header bar
+  doc.setFillColor(56,120,248); doc.rect(0,0,W,6,"F");
+  doc.setFillColor(168,85,247); doc.rect(W/2,0,W/2,6,"F");
+  raw.split("\n").forEach(line=>{
+    line=clean(line.trimEnd());
+    if(!line.trim()){ y+=6; return; }
+    if(line.startsWith("# ")){
+      doc.setFont("helvetica","bold"); doc.setFontSize(22); doc.setTextColor(15,23,42);
+      const l=doc.splitTextToSize(line.slice(2),maxW); ensure(l.length*26); doc.text(l,M,y+10); y+=l.length*26+6;
+      doc.setDrawColor(168,85,247); doc.setLineWidth(1.5); doc.line(M,y,M+80,y); y+=18;
+    }else if(/^#{2,3} /.test(line)){
+      doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.setTextColor(56,120,248);
+      const l=doc.splitTextToSize(line.replace(/^#+ /,""),maxW); ensure(l.length*18+10); y+=8; doc.text(l,M,y); y+=l.length*18;
+    }else if(/^\s*[-*•] /.test(line)){
+      doc.setFont("helvetica","normal"); doc.setFontSize(11); doc.setTextColor(40,40,50);
+      const l=doc.splitTextToSize(line.replace(/^\s*[-*•] /,""),maxW-16); ensure(l.length*15);
+      doc.setFillColor(168,85,247); doc.circle(M+4,y-3.5,2,"F"); doc.text(l,M+16,y); y+=l.length*15+2;
+    }else{
+      doc.setFont("helvetica","normal"); doc.setFontSize(11); doc.setTextColor(40,40,50);
+      const l=doc.splitTextToSize(line,maxW); ensure(l.length*15); doc.text(l,M,y); y+=l.length*15+4;
+    }
+  });
+  footer();
+  return doc.output("blob");
+}
+
+/* =========================================================
+   IMAGE
+   ========================================================= */
+async function runImage(){
+  const p=$("imgPrompt").value.trim(); if(!p) return toast("Please enter a prompt");
+  const [w,h]=$("imgSize").value.split("x").map(Number);
+  const full=p+$("imgStyle").value;
+  busy("imgBtn",true); setOut("🎨 Image output","Generating..."); loading("Painting pixels... (10–30s)");
+  const t0=performance.now();
+  try{
+    const {blob,url,model}=await makeImage(full,w,h,undefined,{tool:"image",logPrompt:p});
+    $("output").innerHTML=`<img src="${url}" alt="Generated image"><div class="meta"><span>🤖 ${model}</span><span>📐 ${w}×${h}</span><span>⏱️ ${((performance.now()-t0)/1000).toFixed(1)}s</span></div>`;
+    current={type:"image",text:full,blob,filename:"ai-image.jpg"};
+    $("copyBtn").disabled=false; $("dlBtn").disabled=false;
+    setOut("🎨 Image output","Done"); addHistory("image",p);
+  }catch(e){ showError(e); setOut("🎨 Image output","Failed"); }
+  busy("imgBtn",false);
+}
+
+/* =========================================================
+   VIDEO: AI storyboard, then AI frames, then canvas + MediaRecorder
+   ========================================================= */
+async function runVideo(){
+  const idea=$("vidPrompt").value.trim(); if(!idea) return toast("Describe your video idea");
+  if(!window.MediaRecorder) return toast("Your browser doesn't support video recording");
+  const n=+$("vidScenes").value, style=$("vidStyle").value;
+  busy("vidBtn",true); setOut("🎬 Video output","Generating..."); loading("Writing storyboard...",true); updateLoad("Writing storyboard...",5);
+  try{
+    // 1. Storyboard
+    let scenes=[];
+    try{
+      const {text}=await chat([
+        {role:"system",content:"You are a film storyboard artist. Reply ONLY with a JSON array, no other text."},
+        {role:"user",content:`Create exactly ${n} sequential scenes for a short video about: "${idea}". Return a JSON array of objects with keys "caption" (max 8 words, shown on screen) and "visual" (a detailed image description, max 40 words).`}
+      ],800,{tool:"video",logPrompt:idea});
+      const m=text.match(/\[[\s\S]*\]/); scenes=JSON.parse(m?m[0]:text).slice(0,n);
+    }catch(e){ console.warn("Storyboard parse failed, using fallback",e); }
+    if(!scenes.length) scenes=Array.from({length:n},(_,i)=>({caption:`${idea} — part ${i+1}`,visual:`${idea}, scene ${i+1} of ${n}`}));
+
+    // 2. Frames (sequential to respect free rate limits)
+    const imgs=[]; const seed=Math.floor(Math.random()*1e6);
+    for(let i=0;i<scenes.length;i++){
+      updateLoad(`Generating frame ${i+1} of ${scenes.length}...`,10+Math.round(60*i/scenes.length));
+      const {url}=await makeImage(`${scenes[i].visual}, ${style}`,1280,720,seed+i,{tool:"video",log:false});
+      imgs.push(await loadImg(url));
+    }
+
+    // 3. Render
+    updateLoad("Rendering video...",75);
+    const blob=await renderVideo(imgs,scenes,p=>updateLoad("Rendering video...",75+Math.round(p*25)));
+    const url=URL.createObjectURL(blob);
+    $("output").innerHTML=`<video src="${url}" controls autoplay loop playsinline></video>
+      <div class="frames">${imgs.map(im=>`<img src="${im.src}">`).join("")}</div>
+      <div class="meta"><span>🎞️ ${scenes.length} scenes · ~${scenes.length*3}s · WebM</span></div>`;
+    current={type:"video",text:scenes.map((s,i)=>`Scene ${i+1}: ${s.caption}\n${s.visual}`).join("\n\n"),blob,filename:"ai-video.webm"};
+    $("copyBtn").disabled=$("dlBtn").disabled=false;
+    setOut("🎬 Video output","Done"); addHistory("video",idea);
+  }catch(e){ showError(e); setOut("🎬 Video output","Failed"); }
+  busy("vidBtn",false);
+}
+
+function loadImg(src){ return new Promise((res,rej)=>{ const i=new Image(); i.crossOrigin="anonymous"; i.onload=()=>res(i); i.onerror=()=>rej(new Error("Frame failed to load")); i.src=src; }); }
+
+function renderVideo(imgs,scenes,onProg){
+  return new Promise((resolve,reject)=>{
+    const W=1280,H=720,FPS=30,SCENE=3,FADE=0.6;
+    const c=document.createElement("canvas"); c.width=W; c.height=H; const ctx=c.getContext("2d");
+    const stream=c.captureStream(FPS);
+    const mime=["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"].find(t=>MediaRecorder.isTypeSupported(t))||"";
+    const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:5_000_000});
+    const chunks=[]; rec.ondataavailable=e=>e.data.size&&chunks.push(e.data);
+    rec.onstop=()=>resolve(new Blob(chunks,{type:"video/webm"}));
+    rec.onerror=e=>reject(e.error||new Error("Recording failed"));
+    const total=imgs.length*SCENE;
+    const drawKB=(img,t,alpha,dir)=>{ // Ken Burns zoom + pan
+      const z=1.05+0.12*t; const w=W*z,h=H*z;
+      const x=-(w-W)*(dir?t:1-t), y=-(h-H)/2;
+      ctx.globalAlpha=alpha; ctx.drawImage(img,x,y,w,h); ctx.globalAlpha=1;
+    };
+    const caption=(txt,a)=>{
+      ctx.globalAlpha=a;
+      const g=ctx.createLinearGradient(0,H-180,0,H); g.addColorStop(0,"rgba(0,0,0,0)"); g.addColorStop(1,"rgba(0,0,0,.75)");
+      ctx.fillStyle=g; ctx.fillRect(0,H-180,W,180);
+      ctx.font="600 40px Inter, sans-serif"; ctx.fillStyle="#fff"; ctx.textAlign="center"; ctx.shadowColor="rgba(0,0,0,.6)"; ctx.shadowBlur=10;
+      ctx.fillText(txt,W/2,H-60); ctx.shadowBlur=0; ctx.globalAlpha=1;
+    };
+    rec.start(100);
+    const start=performance.now();
+    (function frame(){
+      const el=(performance.now()-start)/1000;
+      if(el>=total){ rec.stop(); return; }
+      const i=Math.min(Math.floor(el/SCENE),imgs.length-1), local=(el-i*SCENE)/SCENE;
+      ctx.fillStyle="#000"; ctx.fillRect(0,0,W,H);
+      drawKB(imgs[i],local,1,i%2===0);
+      const into=el-i*SCENE;
+      if(into>SCENE-FADE && imgs[i+1]) drawKB(imgs[i+1],0,(into-(SCENE-FADE))/FADE,(i+1)%2===0);
+      const capA=Math.min(1,into/0.4)*Math.min(1,(SCENE-into)/0.4);
+      caption(scenes[i]?.caption||"",capA);
+      onProg(el/total);
+      requestAnimationFrame(frame);
+    })();
+  });
+}
+
+/* =========================================================
+   OUTPUT ACTIONS + HISTORY
+   ========================================================= */
+async function copyOut(){
+  try{
+    if(current.type==="image" && navigator.clipboard.write && current.blob.type==="image/png"){
+      await navigator.clipboard.write([new ClipboardItem({[current.blob.type]:current.blob})]);
+    } else await navigator.clipboard.writeText(current.text);
+    toast("Copied to clipboard");
+  }catch{ toast("Copy failed"); }
+}
+function downloadOut(){
+  if(!current.blob) return;
+  const a=document.createElement("a"); a.href=URL.createObjectURL(current.blob); a.download=current.filename; a.click();
+}
+function addHistory(kind,prompt){
+  const loc=JSON.parse(localStorage.getItem("studio_hist")||"[]");
+  loc.unshift({tool:kind,prompt,createdAt:new Date().toISOString()});
+  localStorage.setItem("studio_hist",JSON.stringify(loc.slice(0,8)));
+  renderHistory();
+  setTimeout(renderHistory,1500);
+}
+async function renderHistory(){
+  const icons={text:"💬",pdf:"📄",image:"🎨",video:"🎬"};
+  const list=$("histList");
+  let h=[];
+  try{
+    const r=await fetch(`${API_BASE}/history?sessionId=${encodeURIComponent(SESSION_ID)}`);
+    if(r.ok){ const d=await r.json(); if(Array.isArray(d.items) && d.items.length) h=d.items; }
+  }catch{}
+  if(!h.length) h=JSON.parse(localStorage.getItem("studio_hist")||"[]");
+  list.innerHTML="";
+  if(!h.length){ list.innerHTML='<div style="color:var(--dim);font-size:.85rem">Nothing yet. Your generations will show up here.</div>'; return; }
+  h.forEach(x=>{
+    const kind=icons[x.tool]?x.tool:"text";
+    const d=document.createElement("div"); d.className="hist";
+    const k=document.createElement("div"); k.className="k";
+    k.textContent=`${icons[kind]} ${kind} · ${new Date(x.createdAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`;
+    const p=document.createElement("div"); p.className="p"; p.textContent=x.prompt; p.title=x.model||"";
+    d.append(k,p);
+    d.onclick=()=>{ document.querySelector(`.tab[data-tool="${kind}"]`).click();
+      const map={text:"textPrompt",image:"imgPrompt",video:"vidPrompt",pdf:"pdfPrompt"};
+      if(kind==="pdf"){ const ana=x.prompt.startsWith("Analyse: "); setPdfMode(ana?"ana":"gen"); if(ana){ $("pdfQuestion").value=x.prompt.slice(9); return; } }
+      $(map[kind]).value=x.prompt.replace(/^(Generate|Analyse): /,""); };
+    list.appendChild(d);
+  });
+}
+setStatus(); renderHistory();
+</script>
+</body>
+</html>

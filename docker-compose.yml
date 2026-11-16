@@ -1,0 +1,21 @@
+services:
+  frontend:
+    build:
+      context: ./FrontEnd
+      dockerfile: Dockerfile
+    container_name: ai-creative-studio-frontend
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+  ai-proxy-lambda:
+    build:
+      context: ./ai-creative-studio-backend/ai_proxy
+      dockerfile: Dockerfile
+    container_name: ai-creative-studio-ai-proxy
+    ports:
+      - "9000:8080"
+    environment:
+      - AWS_DEFAULT_REGION=eu-west-2
+      - HF_TOKEN_PARAM=/ai-creative-studio/hf-token
+    restart: unless-stopped
