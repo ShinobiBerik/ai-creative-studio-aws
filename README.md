@@ -1,10 +1,22 @@
 # AI Creative Studio — Serverless AWS + Open-Source AI Platform
 
-![AI Creative Studio AWS Service Landscape](./ai-creative-studio-service-landscape.png)
+🌐 **[Live S3 Website Demo (`eu-west-2`)](http://ai-creative-studio-frontend.s3-website.eu-west-2.amazonaws.com)** &nbsp;|&nbsp; 📄 **[Complete 81-Page Engineering & Verification Portfolio PDF (`AI-Creative-Studio-AWS-Cloud.pdf`)](./AI-Creative-Studio-AWS-Cloud.pdf)**
 
 A security-first, **100% AWS Free-Tier (\$0.00/month)** serverless AI application built in **`eu-west-2` (London)**. The platform delivers a **4-in-1 Creative Studio** (**Text Generation**, **PDF Generator & Analyzer**, **Image Generation**, and **Storyboard WebM Video Generation**) backed by a custom multi-AZ VPC, dual AWS Lambda functions, Amazon SQS event decoupling, private DynamoDB persistence via Gateway VPC Endpoints, Docker containerization (Amazon ECR), and Infrastructure as Code (Terraform).
 
-📄 **[View Complete 81-Page Engineering & Verification Portfolio PDF (`AI-Creative-Studio-AWS-Cloud.pdf`)](./AI-Creative-Studio-AWS-Cloud.pdf)**
+---
+
+## Live Application Preview (4-in-1 AI Creative Studio)
+
+![AI Creative Studio 4-in-1 Web Application](./Architecture/ai-creative-studio-ui-home.jpg)
+
+![AI Creative Studio Live Image Generation](./Architecture/ai-creative-studio-ui-image.jpg)
+
+---
+
+## AWS Architecture & Service Landscape
+
+![AI Creative Studio AWS Service Landscape](./ai-creative-studio-service-landscape.png)
 
 ---
 
